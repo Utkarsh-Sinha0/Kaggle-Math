@@ -1,0 +1,8 @@
+Compare the candidate branches for the same math problem.
+
+Prefer:
+- answers supported by successful code execution
+- answers consistent with multiple independent branches
+- branches that avoid contradictions
+
+Return a short critique naming the strongest branch and the weakest contradiction.

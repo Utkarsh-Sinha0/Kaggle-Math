@@ -1,20 +1,27 @@
 # Kaggle-Math
 
-Cloud-first AIMO3 math solver baseline built for GitHub source control, AWS iteration, and Kaggle packaging.
+Nemotron Nano, vLLM-first AIMO3 solver system for AWS iteration, Kaggle-offline packaging, and bounded `autoresearch`.
 
-## What is included
+## Architecture
 
-- Two prompt families: `reasoning_first` and `code_first`
-- Subject router with configurable sample budgets
-- Candidate generation backend with a `transformers` path and a test-friendly `mock` path
-- Python execution with timeout protection
-- Branch memory compression
-- Heuristic selector with majority fallback
-- Strict integer answer extraction with deterministic fallback
-- Experiment logging to `logs/experiment_log.jsonl`
-- Minimal Kaggle-compatible entrypoint
+The repo is organized around four domains:
+
+- `src/runtime/`: vLLM launcher and OpenAI-compatible client, plus a mock runtime for tests
+- `src/solver/`: routing, prompts, branch search, memory compression, selector, and final answer guarantee
+- `src/research/`: eval runner and budget ledger
+- `scripts/`: AWS setup, vLLM launch, eval prep, smoke runs, and Kaggle bundle packaging
+
+## Core guarantees
+
+- Nemotron Nano is the primary runtime target
+- vLLM is the only real inference backend
+- the solver always emits one integer in `0..99999`
+- the research loop is bounded to a single editable policy file
+- GPU-hour usage is tracked against a budget ledger
 
 ## Quick start
+
+For local dry runs and tests:
 
 ```bash
 python -m venv .venv
@@ -24,28 +31,43 @@ pytest
 python scripts/run_smoke.py
 ```
 
-The smoke script uses the `mock` backend by default. Switch to the real model backend on AWS by editing `configs/runtime.yaml` and `configs/model.yaml`.
+The default backend is `mock`, so tests and smoke runs do not require a GPU.
 
 ## AWS H100 path
 
-1. Install runtime dependencies with `pip install -e .[runtime,dev]`
-2. Set `configs/runtime.yaml` to `backend: "transformers"`
-3. Optionally set `HF_TOKEN` if the model download requires authentication
-4. Run `python scripts/run_smoke.py` or call `solve_one` directly
+```bash
+bash scripts/setup_aws_ami.sh
+export AIMO3_BACKEND=vllm
+export AIMO3_MODEL_PATH=./models/nemotron-nano
+bash scripts/launch_vllm_server.sh
+python scripts/run_smoke.py
+```
 
-The `transformers` backend loads models through `AutoTokenizer` and `AutoModelForCausalLM`, uses `bfloat16`, `device_map: auto`, and `attn_implementation: sdpa` by default, and can be pointed at a local weight mount via `AIMO3_MODEL_PATH`.
+If you prefer automatic server launch from the app path, set:
+
+```bash
+export AIMO3_LAUNCH_SERVER=1
+python -m src.kaggle_entry "What is 123 + 456?"
+```
+
+## Public interfaces
+
+- `solve_one(problem_text, runtime, config) -> FinalAnswer`
+- `runtime.chat_batch(messages, sampling_plan, tool_schema=None) -> list[ModelTurn]`
+- `compress_branch(branch_trace, config) -> BranchState`
+- `select_final(branches, selector_config) -> SelectionResult`
+- `run_eval(eval_path, runtime, config) -> EvalSummary`
+- `build_kaggle_bundle(...) -> BundleManifest`
 
 ## Kaggle packaging flow
-
-Create a Kaggle-ready code bundle with:
 
 ```bash
 python scripts/package_kaggle_bundle.py --zip
 ```
 
-This writes `output/kaggle_bundle/` and a matching zip archive. The generated notebook expects:
+This creates `output/kaggle_bundle/` and optionally `output/kaggle_bundle.zip`. The generated notebook expects:
 
-- a code bundle dataset mounted at `/kaggle/input/aimo3-bundle`
-- a model weights dataset mounted at `/kaggle/input/aimo3-model`
+- code bundle dataset at `/kaggle/input/aimo3-bundle`
+- model dataset at `/kaggle/input/aimo3-model`
 
-The notebook sets `AIMO3_KAGGLE=1`, forces the `transformers` backend, points the runtime at the local model mount, and runs the same `solve_one` path as AWS.
+The notebook uses the same `solve_one` path as AWS and launches a local vLLM server against the attached model mount.

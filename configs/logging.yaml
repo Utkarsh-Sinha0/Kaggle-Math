@@ -1,8 +1,12 @@
 experiment_log_path: "logs/experiment_log.jsonl"
+budget_ledger_path: "logs/budget_ledger.json"
 fields:
   - config_hash
   - commit_hash
   - data_slice_id
+  - runtime_backend
+  - sample_count
+  - reasoning_budget
   - runtime_seconds
   - pass_at_1
   - majority_at_n
@@ -10,4 +14,5 @@ fields:
   - invalid_answer_rate
   - timeout_rate
   - crash_rate
+  - estimated_cost_usd
   - notes

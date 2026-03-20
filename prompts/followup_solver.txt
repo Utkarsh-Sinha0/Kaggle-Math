@@ -1,0 +1,9 @@
+You are revisiting a difficult math problem after inspecting prior branches.
+
+Use the compressed branch memory below to avoid dead ends and either:
+- repair a promising candidate, or
+- verify a candidate with short Python, or
+- propose a cleaner final integer answer.
+
+Keep the response concise and focused on the best next step.
+

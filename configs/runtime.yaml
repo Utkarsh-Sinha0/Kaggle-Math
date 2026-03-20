@@ -1,12 +1,18 @@
 backend: "mock"
-python_timeout_seconds: 2
+api_base_url: "http://127.0.0.1:8000/v1"
+api_key: "EMPTY"
+launch_server: false
+enable_thinking: true
+default_reasoning_budget: 2048
+default_max_tokens: 4096
+default_temperature: 1.0
+default_top_p: 1.0
+tool_temperature: 0.6
+tool_top_p: 0.95
+python_timeout_seconds: 3
 max_code_blocks_per_candidate: 1
 kaggle_bundle_dir: "output/kaggle_bundle"
-selector:
-  answer_agreement_bonus: 2.0
-  exec_success_bonus: 1.5
-  code_bonus: 0.5
-  reasoning_bonus: 0.25
 fallback_modulus: 100000
-log_examples: true
-notes: "Use mock backend for local tests and transformers on AWS."
+instance_hourly_cost_usd: 3.933
+budget_hours_limit: 45.0
+notes: "Use mock backend for tests and vLLM with Nemotron Nano on AWS/Kaggle."

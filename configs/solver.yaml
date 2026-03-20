@@ -1,0 +1,39 @@
+answer_range:
+  min: 0
+  max: 99999
+default_sample_count: 4
+max_sample_count: 8
+follow_up_sample_count: 2
+max_resample_rounds: 1
+max_branches_for_critique: 3
+tool_keywords:
+  - "compute"
+  - "calculate"
+  - "mod"
+  - "divisible"
+  - "count"
+  - "bruteforce"
+subject_rules:
+  algebra:
+    keywords: ["equation", "polynomial", "root", "factor", "identity"]
+    use_tools: false
+  geometry:
+    keywords: ["triangle", "circle", "angle", "perimeter", "area", "radius"]
+    use_tools: false
+  number_theory:
+    keywords: ["prime", "mod", "divisible", "gcd", "lcm", "integer"]
+    use_tools: true
+  combinatorics:
+    keywords: ["arrangement", "choose", "count", "permutation", "combination"]
+    use_tools: true
+selector:
+  consensus_weight: 2.5
+  code_success_weight: 1.75
+  contradiction_penalty: 1.25
+  critique_weight: 1.25
+  reasoning_signal_weight: 0.5
+memory:
+  max_facts: 5
+  max_dead_ends: 4
+  max_hints: 3
+

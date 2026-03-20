@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "kaggle-math"
 version = "0.1.0"
-description = "AIMO3 cloud-first math solver baseline"
+description = "AIMO3 Nemotron Nano vLLM-first solver system"
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
@@ -17,10 +17,11 @@ dev = [
   "pytest>=8.0",
 ]
 runtime = [
-  "accelerate>=0.34.0",
-  "safetensors>=0.4.0",
-  "transformers>=4.48.0",
+  "datasets>=3.0.0",
+  "openai>=1.40.0",
   "torch>=2.2.0",
+  "transformers>=4.57.0",
+  "vllm>=0.12.0",
 ]
 
 [tool.setuptools]

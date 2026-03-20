@@ -11,14 +11,35 @@ class ProblemInput:
 
 
 @dataclass(slots=True)
-class Candidate:
-    candidate_id: int
-    prompt_family: str
+class SolverConfig:
+    model: dict[str, Any]
+    runtime: dict[str, Any]
+    solver: dict[str, Any]
+    logging: dict[str, Any]
+    research: dict[str, Any]
+    project_root: str
+
+
+@dataclass(slots=True)
+class SamplingPlan:
+    sample_count: int
+    max_tokens: int
+    temperature: float
+    top_p: float
+    enable_thinking: bool
+    reasoning_budget: int | None
+    prompt_mode: str
+
+
+@dataclass(slots=True)
+class ModelTurn:
     content: str
-    raw_output: str
-    extracted_answer: int | None = None
-    confidence: float = 0.0
-    code: str | None = None
+    finish_reason: str
+    prompt_mode: str
+    reasoning_enabled: bool
+    reasoning_budget: int | None
+    tool_calls: list[dict[str, Any]] = field(default_factory=list)
+    raw_response: dict[str, Any] = field(default_factory=dict)
     metadata: dict[str, Any] = field(default_factory=dict)
 
 
@@ -33,20 +54,32 @@ class ExecResult:
 
 
 @dataclass(slots=True)
-class MemoryState:
+class BranchState:
+    branch_id: int
+    problem_text: str
     subject: str
-    target_quantity: str
-    key_facts: list[str]
-    failed_attempt_tags: list[str]
-    code_observations: list[str]
-    candidate_answers: list[int]
+    messages: list[dict[str, str]]
+    model_turn: ModelTurn
+    code: str | None = None
+    exec_result: ExecResult | None = None
+    candidate_answer: int | None = None
+    proven_facts: list[str] = field(default_factory=list)
+    dead_ends: list[str] = field(default_factory=list)
+    code_observations: list[str] = field(default_factory=list)
+    next_step_hints: list[str] = field(default_factory=list)
+    critique_summary: str = ""
+    contradictions: list[str] = field(default_factory=list)
+    score: float = 0.0
+    resample_round: int = 0
+    needs_followup: bool = False
 
 
 @dataclass(slots=True)
 class SelectionResult:
-    selected_candidate: Candidate
+    selected_branch: BranchState
     mode: str
     selected_answer: int | None
+    critique: str
     scoreboard: list[tuple[int, float]]
 
 
@@ -64,6 +97,9 @@ class ExperimentRecord:
     config_hash: str
     commit_hash: str
     data_slice_id: str
+    runtime_backend: str
+    sample_count: int
+    reasoning_budget: int | None
     runtime_seconds: float
     pass_at_1: float
     majority_at_n: float
@@ -71,14 +107,38 @@ class ExperimentRecord:
     invalid_answer_rate: float
     timeout_rate: float
     crash_rate: float
+    estimated_cost_usd: float
     notes: str = ""
 
 
 @dataclass(slots=True)
-class ConfigBundle:
-    model: dict[str, Any]
-    router: dict[str, Any]
-    runtime: dict[str, Any]
-    logging: dict[str, Any]
-    project_root: str
+class EvalSummary:
+    eval_path: str
+    total_examples: int
+    answered_examples: int
+    pass_at_1: float
+    majority_at_n: float
+    selector_at_n: float
+    invalid_answer_rate: float
+    timeout_rate: float
+    average_runtime_seconds: float
+    estimated_cost_usd: float
 
+
+@dataclass(slots=True)
+class BundleManifest:
+    output_dir: str
+    bundle_mount: str
+    model_mount: str
+    notebook_path: str
+    included_paths: list[str]
+    runtime_backend: str
+
+
+@dataclass(slots=True)
+class BudgetLedger:
+    budget_hours_limit: float
+    consumed_hours: float
+    estimated_cost_usd: float
+    blocked: bool
+    entries: list[dict[str, Any]] = field(default_factory=list)

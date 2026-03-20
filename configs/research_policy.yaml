@@ -1,0 +1,21 @@
+editable_file: "configs/research_policy.yaml"
+metric: "selector_at_n - invalid_answer_rate - timeout_rate"
+allowed_knobs:
+  sample_count_candidates: [4, 6, 8]
+  reasoning_budget_candidates: [1024, 2048, 4096]
+  critique_enabled_candidates: [true, false]
+  resample_round_candidates: [0, 1]
+  selector_weights:
+    consensus_weight: [2.0, 2.5, 3.0]
+    code_success_weight: [1.0, 1.75, 2.0]
+    contradiction_penalty: [0.75, 1.25, 1.5]
+    critique_weight: [0.75, 1.25, 1.5]
+  memory:
+    max_facts: [3, 5]
+    max_dead_ends: [2, 4]
+    max_hints: [2, 3]
+stop_conditions:
+  max_experiments_per_run: 12
+  max_estimated_gpu_hours: 4.0
+  require_clean_answer_rate: true
+  require_budget_headroom_hours: 5.0

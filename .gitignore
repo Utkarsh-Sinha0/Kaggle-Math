@@ -8,6 +8,8 @@ venv/
 build/
 dist/
 output/
+models/
+nano_v3_reasoning_parser.py
 logs/*.jsonl
 logs/*.csv
 !logs/.gitkeep
