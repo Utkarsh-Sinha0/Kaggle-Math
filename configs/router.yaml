@@ -1,0 +1,20 @@
+default_prompt_family: "reasoning_first"
+default_sample_budget: 3
+subjects:
+  algebra:
+    keywords: ["equation", "polynomial", "root", "factor", "identity"]
+    prompt_family: "reasoning_first"
+    sample_budget: 3
+  geometry:
+    keywords: ["triangle", "circle", "angle", "perimeter", "area", "radius"]
+    prompt_family: "reasoning_first"
+    sample_budget: 4
+  number_theory:
+    keywords: ["prime", "mod", "divisible", "gcd", "lcm", "integer"]
+    prompt_family: "code_first"
+    sample_budget: 4
+  combinatorics:
+    keywords: ["arrangement", "choose", "count", "permutation", "combination"]
+    prompt_family: "code_first"
+    sample_budget: 4
+

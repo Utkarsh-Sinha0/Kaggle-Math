@@ -1,0 +1,12 @@
+backend: "mock"
+python_timeout_seconds: 2
+max_code_blocks_per_candidate: 1
+selector:
+  answer_agreement_bonus: 2.0
+  exec_success_bonus: 1.5
+  code_bonus: 0.5
+  reasoning_bonus: 0.25
+fallback_modulus: 100000
+log_examples: true
+notes: "Use mock backend for local tests and transformers on AWS."
+

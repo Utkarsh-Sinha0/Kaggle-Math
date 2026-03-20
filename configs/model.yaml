@@ -1,0 +1,8 @@
+model_id: "nvidia/OpenReasoning-Nemotron-32B"
+dtype: "bfloat16"
+device_map: "auto"
+max_new_tokens: 512
+temperature: 0.2
+top_p: 0.95
+do_sample: true
+
