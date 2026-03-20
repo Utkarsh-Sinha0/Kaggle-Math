@@ -7,7 +7,7 @@ venv/
 *.pyd
 build/
 dist/
+output/
 logs/*.jsonl
 logs/*.csv
 !logs/.gitkeep
-

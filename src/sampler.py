@@ -1,11 +1,46 @@
 from __future__ import annotations
 
 import hashlib
+import os
 from abc import ABC, abstractmethod
+from pathlib import Path
 
 from src.answer_extract import extract_candidate_answer
 from src.models import Candidate, ConfigBundle, MemoryState
 from src.python_exec import extract_first_code_block
+
+
+def _resolve_model_source(config: ConfigBundle) -> tuple[str, bool]:
+    local_model_path = config.model.get("local_model_path")
+    if local_model_path:
+        return str(local_model_path), True
+    env_model_path = os.getenv("AIMO3_MODEL_PATH")
+    if env_model_path:
+        return env_model_path, True
+    return str(config.model["model_id"]), bool(config.model.get("local_files_only", False))
+
+
+def _resolve_torch_dtype(dtype_name: str):
+    import torch
+
+    mapping = {
+        "auto": "auto",
+        "bfloat16": torch.bfloat16,
+        "float16": torch.float16,
+        "float32": torch.float32,
+    }
+    return mapping.get(dtype_name, torch.bfloat16)
+
+
+def _find_model_device(model) -> str:
+    device = getattr(model, "device", None)
+    if device is not None and str(device) != "meta":
+        return str(device)
+    device_map = getattr(model, "hf_device_map", None) or {}
+    for mapped_device in device_map.values():
+        if isinstance(mapped_device, str) and mapped_device not in {"cpu", "disk", "meta"}:
+            return mapped_device
+    return "cpu"
 
 
 class GeneratorBackend(ABC):
@@ -39,35 +74,92 @@ class MockGeneratorBackend(GeneratorBackend):
 
 class TransformersGeneratorBackend(GeneratorBackend):
     def __init__(self) -> None:
-        self._pipeline = None
-        self._loaded_model_id: str | None = None
+        self._tokenizer = None
+        self._model = None
+        self._loaded_signature: tuple[str, str, str, bool] | None = None
 
     def _ensure_loaded(self, config: ConfigBundle) -> None:
-        model_id = config.model["model_id"]
-        if self._pipeline is not None and self._loaded_model_id == model_id:
+        model_source, local_files_only = _resolve_model_source(config)
+        dtype_name = str(config.model.get("dtype", "bfloat16"))
+        attn_implementation = str(config.model.get("attn_implementation", "sdpa"))
+        signature = (model_source, dtype_name, attn_implementation, local_files_only)
+        if self._model is not None and self._loaded_signature == signature:
             return
 
-        from transformers import pipeline
+        try:
+            import torch
+            from transformers import AutoModelForCausalLM, AutoTokenizer
+        except ImportError as exc:
+            raise RuntimeError(
+                "Transformers runtime dependencies are missing. Install with `pip install -e .[runtime]` on AWS."
+            ) from exc
 
-        self._pipeline = pipeline(
-            "text-generation",
-            model=model_id,
-            device_map=config.model.get("device_map", "auto"),
-            model_kwargs={"torch_dtype": config.model.get("dtype", "auto")},
+        token = os.getenv("HF_TOKEN") or os.getenv("HUGGING_FACE_HUB_TOKEN")
+        tokenizer = AutoTokenizer.from_pretrained(
+            model_source,
+            trust_remote_code=bool(config.model.get("trust_remote_code", False)),
+            local_files_only=local_files_only,
+            token=token,
         )
-        self._loaded_model_id = model_id
+        if tokenizer.pad_token is None and tokenizer.eos_token is not None:
+            tokenizer.pad_token = tokenizer.eos_token
+        tokenizer.padding_side = str(config.model.get("padding_side", "left"))
+
+        model_kwargs = {
+            "device_map": config.model.get("device_map", "auto"),
+            "trust_remote_code": bool(config.model.get("trust_remote_code", False)),
+            "local_files_only": local_files_only,
+            "token": token,
+            "low_cpu_mem_usage": True,
+        }
+        torch_dtype = _resolve_torch_dtype(dtype_name)
+        if torch_dtype != "auto":
+            model_kwargs["torch_dtype"] = torch_dtype
+        if attn_implementation:
+            model_kwargs["attn_implementation"] = attn_implementation
+
+        model = AutoModelForCausalLM.from_pretrained(model_source, **model_kwargs)
+        model.eval()
+        self._tokenizer = tokenizer
+        self._model = model
+        self._loaded_signature = signature
 
     def generate(self, prompt: str, sample_budget: int, config: ConfigBundle) -> list[str]:
         self._ensure_loaded(config)
-        outputs = self._pipeline(
-            [prompt] * sample_budget,
-            max_new_tokens=int(config.model.get("max_new_tokens", 512)),
-            temperature=float(config.model.get("temperature", 0.2)),
-            top_p=float(config.model.get("top_p", 0.95)),
-            do_sample=bool(config.model.get("do_sample", True)),
-            return_full_text=False,
+        import torch
+
+        assert self._tokenizer is not None
+        assert self._model is not None
+
+        prompts = [prompt] * sample_budget
+        tokenized = self._tokenizer(
+            prompts,
+            return_tensors="pt",
+            padding=True,
+            truncation=True,
         )
-        return [item[0]["generated_text"] for item in outputs]
+        model_device = _find_model_device(self._model)
+        tokenized = {
+            key: value.to(model_device) if hasattr(value, "to") else value
+            for key, value in tokenized.items()
+        }
+
+        prompt_length = tokenized["input_ids"].shape[1]
+        with torch.inference_mode():
+            outputs = self._model.generate(
+                **tokenized,
+                max_new_tokens=int(config.model.get("max_new_tokens", 512)),
+                temperature=float(config.model.get("temperature", 0.2)),
+                top_p=float(config.model.get("top_p", 0.95)),
+                do_sample=bool(config.model.get("do_sample", True)),
+                repetition_penalty=float(config.model.get("repetition_penalty", 1.0)),
+                use_cache=bool(config.model.get("use_cache", True)),
+                pad_token_id=self._tokenizer.pad_token_id,
+                eos_token_id=self._tokenizer.eos_token_id,
+            )
+
+        generated_only = outputs[:, prompt_length:]
+        return self._tokenizer.batch_decode(generated_only, skip_special_tokens=True)
 
 
 def get_backend(name: str) -> GeneratorBackend:
@@ -101,4 +193,3 @@ def generate_candidates(
         candidate.extracted_answer = extract_candidate_answer(candidate)
         candidates.append(candidate)
     return candidates
-

@@ -17,6 +17,8 @@ dev = [
   "pytest>=8.0",
 ]
 runtime = [
+  "accelerate>=0.34.0",
+  "safetensors>=0.4.0",
   "transformers>=4.48.0",
   "torch>=2.2.0",
 ]
@@ -26,4 +28,3 @@ py-modules = []
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-

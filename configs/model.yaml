@@ -1,8 +1,14 @@
 model_id: "nvidia/OpenReasoning-Nemotron-32B"
+local_model_path: null
 dtype: "bfloat16"
 device_map: "auto"
+attn_implementation: "sdpa"
+trust_remote_code: false
+padding_side: "left"
+local_files_only: false
+use_cache: true
 max_new_tokens: 512
 temperature: 0.2
 top_p: 0.95
 do_sample: true
-
+repetition_penalty: 1.0

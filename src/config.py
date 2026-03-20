@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 from pathlib import Path
 from typing import Any
 
@@ -18,13 +19,30 @@ def _load_yaml(path: Path) -> dict[str, Any]:
 def load_config_bundle(config_dir: str | Path) -> ConfigBundle:
     config_dir = Path(config_dir)
     project_root = str(config_dir.parent.resolve())
-    return ConfigBundle(
+    bundle = ConfigBundle(
         model=_load_yaml(config_dir / "model.yaml"),
         router=_load_yaml(config_dir / "router.yaml"),
         runtime=_load_yaml(config_dir / "runtime.yaml"),
         logging=_load_yaml(config_dir / "logging.yaml"),
         project_root=project_root,
     )
+    apply_environment_overrides(bundle)
+    return bundle
+
+
+def apply_environment_overrides(bundle: ConfigBundle) -> None:
+    model_path = os.getenv("AIMO3_MODEL_PATH")
+    if model_path:
+        bundle.model["local_model_path"] = model_path
+        bundle.model["local_files_only"] = True
+
+    backend = os.getenv("AIMO3_BACKEND")
+    if backend:
+        bundle.runtime["backend"] = backend
+
+    if os.getenv("AIMO3_KAGGLE") == "1":
+        bundle.model["local_files_only"] = True
+        bundle.runtime["backend"] = "transformers"
 
 
 def config_hash(bundle: ConfigBundle) -> str:
